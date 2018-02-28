@@ -14,11 +14,11 @@ Inspired by [kotlin-jpa-specification-dsl](https://github.com/consoleau/kotlin-j
 
 ```groovy
 repositories {
-    jcenter()
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    compile("com.github.klinq:klinq-jpaspec:0.1")
+    compile 'com.github.klinq:klinq-jpaspec:0.1-SNAPSHOT'
 }
 ```
 
