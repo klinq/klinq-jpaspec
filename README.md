@@ -1,7 +1,7 @@
 # LINQ Style Kotlin Queries for Spring Data JPA Specification
 [![Build Status](https://travis-ci.org/klinq/klinq-jpaspec.svg?branch=master)](https://travis-ci.org/klinq/klinq-jpaspec)
 [![License](http://img.shields.io/:license-apache-blue.svg?style=flat-square)](http://www.apache.org/licenses/LICENSE-2.0.html)
-[ ![Download](https://api.bintray.com/packages/klinq/kotlin/klinq-jpaspec/images/download.svg) ](https://bintray.com/klinq/kotlin/klinq-jpaspec/_latestVersion)
+[![](https://jitpack.io/v/klinq/klinq-jpaspec.svg)](https://jitpack.io/#klinq/klinq-jpaspec)
 
 This library provides language integrated Kotlin queries for spring data JPA repositories.
  
