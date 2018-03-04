@@ -4,29 +4,40 @@ import org.springframework.data.jpa.domain.Specifications
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
-import javax.persistence.Entity
-import javax.persistence.GeneratedValue
-import javax.persistence.Id
-import javax.persistence.OneToMany
+import javax.persistence.*
 
 @Repository
 interface TvShowRepository : CrudRepository<TvShow, Int>, JpaSpecificationExecutor<TvShow>
+
+@Repository
+interface GenreRepository : CrudRepository<Genre, Int>, JpaSpecificationExecutor<Genre>
 
 interface HasName {
     val name: String
 }
 
 @Entity
+data class Genre (
+        @Id
+        @GeneratedValue
+        val id: Int = 0,
+        override val name: String = ""
+): HasName
+
+@Entity
 data class TvShow (
         @Id
         @GeneratedValue
         val id: Int = 0,
+        @ManyToOne
+        val genre: Genre? = null,
         override val name: String = "",
         val synopsis: String = "",
         val availableOnNetflix: Boolean = false,
         val releaseDate: String? = null,
         @OneToMany(cascade = [(javax.persistence.CascadeType.ALL)])
-        val starRatings: Set<StarRating> = emptySet()): HasName
+        val starRatings: Set<StarRating> = emptySet()
+): HasName
 
 @Entity
 data class StarRating(

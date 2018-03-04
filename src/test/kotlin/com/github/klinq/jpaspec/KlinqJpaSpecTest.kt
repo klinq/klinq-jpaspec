@@ -1,8 +1,6 @@
 package com.github.klinq.jpaspec
 
-import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.Matchers.containsInAnyOrder
-import org.hamcrest.Matchers.equalTo
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -11,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.jpa.domain.Specifications
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit4.SpringRunner
 import org.springframework.transaction.annotation.Transactional
 
@@ -18,21 +17,34 @@ import org.springframework.transaction.annotation.Transactional
 @SpringBootTest
 @SpringBootApplication
 @Transactional
+@TestPropertySource(properties = ["logging.level.org.hibernate=DEBUG"])
 open class KlinqJpaSpecTest {
 
     @Autowired
     lateinit var tvShowRepo: TvShowRepository
 
+    @Autowired
+    lateinit var genreRepo: GenreRepository
+
     lateinit var hemlockGrove: TvShow
     lateinit var theWalkingDead: TvShow
     lateinit var betterCallSaul: TvShow
 
+    lateinit var crimeDrama: Genre
+    lateinit var horrorThriller: Genre
+
     @Before
     fun setup() {
-        with(tvShowRepo) {
+        genreRepo.apply {
+            crimeDrama = save(Genre(name = "Crime drama"))
+            horrorThriller = save(Genre(name = "Horror Thriller"))
+        }
+
+        tvShowRepo.apply {
             hemlockGrove = save(
                     TvShow(
                             name = "Hemlock Grove",
+                            genre = horrorThriller,
                             availableOnNetflix = true,
                             synopsis = "A teenage girl is brutally murdered, sparking a hunt for her killer. But in a town where everyone hides a secret, will they find the monster among them?",
                             releaseDate = "2013"))
@@ -48,6 +60,7 @@ open class KlinqJpaSpecTest {
             betterCallSaul = save(
                     TvShow(
                             name = "Better Call Saul",
+                            genre = crimeDrama,
                             availableOnNetflix = false,
                             synopsis = "The trials and tribulations of criminal lawyer, Jimmy McGill, in the time leading up to establishing his strip-mall law office in Albuquerque, New Mexico.",
                             starRatings = setOf(StarRating(stars = 4), StarRating(stars = 2))))
@@ -89,196 +102,178 @@ open class KlinqJpaSpecTest {
 
     @Test
     fun `Get a tv show by id`() {
-        val show = tvShowRepo.findOne(hemlockGrove.id)
-        assertThat(show, equalTo(hemlockGrove))
+        assertThat(tvShowRepo.findOne(hemlockGrove.id)).isEqualTo(hemlockGrove)
     }
 
     @Test
     fun `Get a tv show by id equality`() {
-        val show = tvShowRepo.findOne(TvShow::id.equal(theWalkingDead.id))
-        assertThat(show, equalTo(theWalkingDead))
+        assertThat(tvShowRepo.findOne(TvShow::id.equal(theWalkingDead.id))).isEqualTo(theWalkingDead)
     }
 
     @Test
     fun `Get tv shows by id notEqual`() {
-        val shows = tvShowRepo.findAll(TvShow::name.notEqual(theWalkingDead.name))
-        assertThat(shows, containsInAnyOrder(betterCallSaul, hemlockGrove))
+        assertThat(tvShowRepo.findAll(TvShow::name.notEqual(theWalkingDead.name))).containsOnly(betterCallSaul, hemlockGrove)
     }
 
     @Test
     fun `Get tv show by id in`() {
-        val shows = tvShowRepo.findAll(TvShow::id.`in`(setOf(hemlockGrove.id, theWalkingDead.id)))
-        assertThat(shows, containsInAnyOrder(hemlockGrove, theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::id.`in`(setOf(hemlockGrove.id, theWalkingDead.id)))).containsOnly(hemlockGrove, theWalkingDead)
     }
 
     @Test
     fun `Get tv show by id lt`() {
-        val shows = tvShowRepo.findAll(TvShow::id.lt(betterCallSaul.id))
-        assertThat(shows, containsInAnyOrder(hemlockGrove, theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::id.lt(betterCallSaul.id))).containsOnly(hemlockGrove, theWalkingDead)
     }
 
     @Test
     fun `Get tv show by id le`() {
-        val shows = tvShowRepo.findAll(TvShow::id.le(theWalkingDead.id))
-        assertThat(shows, containsInAnyOrder(hemlockGrove, theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::id.le(theWalkingDead.id))).containsOnly(hemlockGrove, theWalkingDead)
     }
 
     @Test
     fun `Get tv show by id gt`() {
-        val shows = tvShowRepo.findAll(TvShow::id.gt(hemlockGrove.id))
-        assertThat(shows, containsInAnyOrder(theWalkingDead, betterCallSaul))
+        assertThat(tvShowRepo.findAll(TvShow::id.gt(hemlockGrove.id))).containsOnly(theWalkingDead, betterCallSaul)
     }
 
     @Test
     fun `Get tv show by id ge`() {
-        val shows = tvShowRepo.findAll(TvShow::id.ge(theWalkingDead.id))
-        assertThat(shows, containsInAnyOrder(theWalkingDead, betterCallSaul))
+        assertThat(tvShowRepo.findAll(TvShow::id.ge(theWalkingDead.id))).containsOnly(theWalkingDead, betterCallSaul)
     }
 
     @Test
     fun `Get tv show by name lessThan`() {
-        val shows = tvShowRepo.findAll(TvShow::name.lessThan("C"))
-        assertThat(shows, containsInAnyOrder(betterCallSaul))
+        assertThat(tvShowRepo.findAll(TvShow::name.lessThan("C"))).containsOnly(betterCallSaul)
     }
 
     @Test
     fun `Get tv show by name lessThanOrEqualTo`() {
-        val shows = tvShowRepo.findAll(TvShow::name.lessThanOrEqualTo("Hemlock Grove"))
-        assertThat(shows, containsInAnyOrder(betterCallSaul, hemlockGrove))
+        assertThat(tvShowRepo.findAll(TvShow::name.lessThanOrEqualTo("Hemlock Grove"))).containsOnly(betterCallSaul, hemlockGrove)
     }
 
     @Test
     fun `Get tv show by name greaterThan`() {
-        val shows = tvShowRepo.findAll(TvShow::name.greaterThan("Hemlock Grove"))
-        assertThat(shows, containsInAnyOrder(theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::name.greaterThan("Hemlock Grove"))).containsOnly(theWalkingDead)
     }
 
     @Test
     fun `Get tv show by name greaterThanOrEqualTo`() {
-        val shows = tvShowRepo.findAll(TvShow::name.greaterThanOrEqualTo("Hemlock Grove"))
-        assertThat(shows, containsInAnyOrder(hemlockGrove, theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::name.greaterThanOrEqualTo("Hemlock Grove"))).containsOnly(hemlockGrove, theWalkingDead)
     }
 
     @Test
     fun `Get tv show by name between`() {
-        val shows = tvShowRepo.findAll(TvShow::name.between("A", "H"))
-        assertThat(shows, containsInAnyOrder(betterCallSaul))
+        assertThat(tvShowRepo.findAll(TvShow::name.between("A", "H"))).containsOnly(betterCallSaul)
     }
 
     @Test
     fun `Get tv show by boolean isTrue`() {
-        val shows = tvShowRepo.findAll(TvShow::availableOnNetflix.isTrue())
-        assertThat(shows, containsInAnyOrder(hemlockGrove))
+        assertThat(tvShowRepo.findAll(TvShow::availableOnNetflix.isTrue())).containsOnly(hemlockGrove)
     }
 
     @Test
     fun `Get tv show by boolean isFalse`() {
-        val shows = tvShowRepo.findAll(TvShow::availableOnNetflix.isFalse())
-        assertThat(shows, containsInAnyOrder(betterCallSaul, theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::availableOnNetflix.isFalse())).containsOnly(betterCallSaul, theWalkingDead)
     }
 
     @Test
     fun `Get tv show by releaseDate isNull`() {
-        val shows = tvShowRepo.findAll(TvShow::releaseDate.isNull())
-        assertThat(shows, containsInAnyOrder(betterCallSaul))
+        assertThat(tvShowRepo.findAll(TvShow::releaseDate.isNull())).containsOnly(betterCallSaul)
     }
 
     @Test
     fun `Get tv show by releaseDate isNotNull`() {
-        val shows = tvShowRepo.findAll(TvShow::releaseDate.isNotNull())
-        assertThat(shows, containsInAnyOrder(hemlockGrove, theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::releaseDate.isNotNull())).containsOnly(hemlockGrove, theWalkingDead)
     }
 
     @Test
     fun `Get tv show by ratings isEmpty`() {
-        val shows = tvShowRepo.findAll(TvShow::starRatings.isEmpty())
-        assertThat(shows, containsInAnyOrder(hemlockGrove))
+        assertThat(tvShowRepo.findAll(TvShow::starRatings.isEmpty())).containsOnly(hemlockGrove)
     }
 
     @Test
     fun `Get tv show by ratings isNotEmpty`() {
-        val shows = tvShowRepo.findAll(TvShow::starRatings.isNotEmpty())
-        assertThat(shows, containsInAnyOrder(betterCallSaul, theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::starRatings.isNotEmpty())).containsOnly(betterCallSaul, theWalkingDead)
     }
 
     @Test
     fun `Get tv show by isMember`() {
-        val shows = tvShowRepo.findAll(TvShow::starRatings.isMember(theWalkingDead.starRatings.first()))
-        assertThat(shows, containsInAnyOrder(theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::starRatings.isMember(theWalkingDead.starRatings.first()))).containsOnly(theWalkingDead)
     }
 
     @Test
     fun `Get tv show by isNotMember`() {
-        val shows = tvShowRepo.findAll(TvShow::starRatings.isNotMember(betterCallSaul.starRatings.first()))
-        assertThat(shows, containsInAnyOrder(theWalkingDead, hemlockGrove))
+        assertThat(tvShowRepo.findAll(TvShow::starRatings.isNotMember(betterCallSaul.starRatings.first()))).containsOnly(theWalkingDead, hemlockGrove)
     }
 
     @Test
     fun `Get a tv show by name like`() {
-        val shows = tvShowRepo.findAll(TvShow::name.like("The%"))
-        assertThat(shows, containsInAnyOrder(theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::name.like("The%"))).containsOnly(theWalkingDead)
     }
 
     @Test
     fun `Get a tv show by synopsis like with escape char`() {
-        val shows = tvShowRepo.findAll(TvShow::synopsis.like("%them\\?", escapeChar = '\\'))
-        assertThat(shows, containsInAnyOrder(hemlockGrove))
+        assertThat(tvShowRepo.findAll(TvShow::synopsis.like("%them\\?", escapeChar = '\\'))).containsOnly(hemlockGrove)
     }
 
     @Test
     fun `Get a tv show by name notLike`() {
-        val shows = tvShowRepo.findAll(TvShow::name.notLike("The %"))
-        assertThat(shows, containsInAnyOrder(betterCallSaul, hemlockGrove))
+        assertThat(tvShowRepo.findAll(TvShow::name.notLike("The %"))).containsOnly(betterCallSaul, hemlockGrove)
     }
 
     @Test
     fun `Get a tv show by synopsis notLike with escape char`() {
-        val shows = tvShowRepo.findAll(TvShow::synopsis.notLike("%\\.", escapeChar = '\\'))
-        assertThat(shows, containsInAnyOrder(hemlockGrove))
+        assertThat(tvShowRepo.findAll(TvShow::synopsis.notLike("%\\.", escapeChar = '\\'))).containsOnly(hemlockGrove)
     }
 
     @Test
     fun `Find tv shows with and`() {
-        val shows = tvShowRepo.findAll(TvShow::availableOnNetflix.isFalse() and TvShow::releaseDate.equal("2010"))
-        assertThat(shows, containsInAnyOrder(theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::availableOnNetflix.isFalse() and TvShow::releaseDate.equal("2010"))).containsOnly(theWalkingDead)
     }
 
     @Test
     fun `Find tv shows with or`() {
-        val shows = tvShowRepo.findAll(TvShow::availableOnNetflix.isTrue() or TvShow::releaseDate.equal("2010"))
-        assertThat(shows, containsInAnyOrder(hemlockGrove, theWalkingDead))
+        assertThat(tvShowRepo.findAll(TvShow::availableOnNetflix.isTrue() or TvShow::releaseDate.equal("2010"))).containsOnly(hemlockGrove, theWalkingDead)
     }
 
     @Test
     fun `Find tv shows with not operator`() {
-        val shows = tvShowRepo.findAll(!TvShow::releaseDate.equal("2010"))
-        assertThat(shows, containsInAnyOrder(hemlockGrove))
-    }
-
-    @Test
-    fun `Find tv shows with not function`() {
-        val shows = tvShowRepo.findAll(TvShow::releaseDate.not().equal("2010"))
-        assertThat(shows, containsInAnyOrder(hemlockGrove))
+        assertThat(tvShowRepo.findAll(!TvShow::releaseDate.equal("2010"))).containsOnly(hemlockGrove)
     }
 
     @Test
     fun `Test Join`() {
-        val shows = tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars).equal(2))
-        assertThat(shows, containsInAnyOrder(betterCallSaul))
+        assertThat(tvShowRepo.findAll(TvShow::genre.toJoin().where(Genre::name).equal("Crime drama"))).containsOnly(betterCallSaul)
+    }
+
+    @Test
+    fun `Test Left Join`() {
+        val spec = TvShow::genre.toLeftJoin().where(Genre::name).equal("Crime drama") or
+                TvShow::genre.toLeftJoin().where(Genre::id).isNull()
+        assertThat(tvShowRepo.findAll(spec)).containsOnly(betterCallSaul, theWalkingDead)
+    }
+
+    @Test
+    fun `Test Collection Join`() {
+        assertThat(tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars).equal(2))).containsOnly(betterCallSaul)
+    }
+
+    @Test
+    fun `Test Collection Left Join`() {
+        val spec = TvShow::starRatings.toCollectionLeftJoin().where(StarRating::stars).notIn(listOf(2, 4)) or
+                TvShow::starRatings.toCollectionLeftJoin().where(StarRating::id).isNull()
+        assertThat(tvShowRepo.findAll(spec)).containsOnly(theWalkingDead, hemlockGrove)
     }
 
     @Test
     fun `Find tv shows by query DTO`() {
         val query = TvShowQuery(availableOnNetflix = false, keywords = listOf("Rick", "Jimmy"))
-        val shows = tvShowRepo.findAll(query.toSpecification())
-        assertThat(shows, containsInAnyOrder(betterCallSaul, theWalkingDead))
+        assertThat(tvShowRepo.findAll(query.toSpecification())).containsOnly(betterCallSaul, theWalkingDead)
     }
 
     @Test
     fun `Find tv shows by query DTO - empty query`() {
         val query = TvShowQuery()
-        val shows = tvShowRepo.findAll(query.toSpecification())
-        assertThat(shows, containsInAnyOrder(betterCallSaul, hemlockGrove, theWalkingDead))
+        assertThat(tvShowRepo.findAll(query.toSpecification())).containsOnly(betterCallSaul, hemlockGrove, theWalkingDead)
     }
 
     @Test
@@ -287,15 +282,13 @@ open class KlinqJpaSpecTest {
                 TvShowQuery(availableOnNetflix = false, keywords = listOf("Jimmy")),
                 TvShowQuery(availableOnNetflix = true, keywords = listOf("killer", "monster"), releaseDates = listOf("2010", "2013"))
         )
-        val shows = tvShowRepo.findAll(queries.toSpecification())
-        assertThat(shows, containsInAnyOrder(betterCallSaul, hemlockGrove))
+        assertThat(tvShowRepo.findAll(queries.toSpecification())).containsOnly(betterCallSaul, hemlockGrove)
     }
 
     @Test
     fun `Find tv shows by empty query DTOs list`() {
         val queries = listOf<TvShowQuery>()
-        val shows = tvShowRepo.findAll(queries.toSpecification())
-        assertThat(shows, containsInAnyOrder(betterCallSaul, hemlockGrove, theWalkingDead))
+        assertThat(tvShowRepo.findAll(queries.toSpecification())).containsOnly(betterCallSaul, hemlockGrove, theWalkingDead)
     }
 
     @Test
@@ -304,7 +297,7 @@ open class KlinqJpaSpecTest {
                 availableOnNetflix(false),
                 hasKeywordIn(listOf("Rick", "Jimmy"))
         ))
-        assertThat(shows, containsInAnyOrder(betterCallSaul, theWalkingDead))
+        assertThat(shows).containsOnly(betterCallSaul, theWalkingDead)
     }
 
     @Test
@@ -324,7 +317,7 @@ open class KlinqJpaSpecTest {
                         )
                 )
         )
-        assertThat(shows, containsInAnyOrder(betterCallSaul, hemlockGrove))
+        assertThat(shows).containsOnly(betterCallSaul, hemlockGrove)
     }
 
 }

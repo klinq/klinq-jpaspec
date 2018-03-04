@@ -9,12 +9,10 @@ import kotlin.reflect.KProperty1
 private fun <T> where(makePredicate: CriteriaBuilder.(Root<T>) -> Predicate): Specifications<T> =
         Specifications.where<T> { root, _, criteriaBuilder -> criteriaBuilder.makePredicate(root) }
 
-class WhereBuilder<T, R>(private val path: (Root<T>) -> Path<R>, private val specProcessor: (Specifications<Any>) -> Specifications<Any> = { it }) {
+class WhereBuilder<T, R>(private val path: (Root<T>) -> Path<R>) {
     @Suppress("UNCHECKED_CAST")
     fun spec(makePredicate: CriteriaBuilder.(Path<R>) -> Predicate): Specifications<T> =
-            specProcessor(where<T> { root -> makePredicate(path(root)) } as Specifications<Any>) as Specifications<T>
-
-    fun not(): WhereBuilder<T, R> = WhereBuilder(path, { specProcessor(it.not()) })
+            where { root -> makePredicate(path(root)) }
 
     // Equality
     fun equal(x: R): Specifications<T> = spec { equal(it, x) }
@@ -31,27 +29,31 @@ class WhereBuilder<T, R>(private val path: (Root<T>) -> Path<R>, private val spe
                 Specifications.where<T>(null)
             }
 
+    fun notIn(values: Collection<R>): Specifications<T> =
+            if (values.isNotEmpty()) {
+                spec { path ->
+                    `in`(path).also { value -> values.forEach { value.value(it) } }.not()
+                }
+            } else {
+                Specifications.where<T>(null)
+            }
+
     // Null / NotNull
     fun isNull() = spec { isNull(it) }
 
     fun isNotNull() = spec { isNotNull(it) }
 }
 
-class FromBuilder<Z, T>(val from: (Root<Z>) -> From<Z, T>, val specProcessor: (Specifications<Any>) -> Specifications<Any> = { it }) {
-    inline fun <reified R> where(prop: KProperty1<T, R?>): WhereBuilder<Z, R> = WhereBuilder({ from(it).get<R>(prop.name) }, specProcessor)
+class FromBuilder<Z, T>(val from: (Root<Z>) -> From<Z, T>) {
+    inline fun <reified R> where(prop: KProperty1<T, R?>): WhereBuilder<Z, R> = WhereBuilder({ from(it).get<R>(prop.name) })
 
-    inline fun <reified R> join(prop: KProperty1<T, R?>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name) }, specProcessor)
-    inline fun <reified R> leftJoin(prop: KProperty1<T, R?>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) }, specProcessor)
-    inline fun <reified R> leftJoinOrNull(prop: KProperty1<T, R?>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) }, orNull(prop))
+    inline fun <reified R> join(prop: KProperty1<T, R?>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
+            FromBuilder({ from(it).join(prop.name, joinType) })
+    inline fun <reified R> leftJoin(prop: KProperty1<T, R?>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) })
 
-    inline fun <reified R> joinCollection(prop: KProperty1<T, Collection<R>>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name) }, specProcessor)
-    inline fun <reified R> leftJoinCollection(prop: KProperty1<T, Collection<R>>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) }, specProcessor)
-    inline fun <reified R> leftJoinCollectionOrNull(prop: KProperty1<T, Collection<R>>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) }, orNull(prop))
-
-    fun <R> orNull(prop: KProperty1<T, R?>): (Specifications<Any>) -> Specifications<Any> = {
-        @Suppress("UNCHECKED_CAST")
-        specProcessor(or(it, prop.toWhere().isNull() as Specifications<in Any>))
-    }
+    inline fun <reified R> joinCollection(prop: KProperty1<T, Collection<R>>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
+            FromBuilder({ from(it).join(prop.name, joinType) })
+    inline fun <reified R> leftJoinCollection(prop: KProperty1<T, Collection<R>>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) })
 }
 
 fun <T, R> KProperty1<T, R>.toWhere(): WhereBuilder<T, R> = WhereBuilder({ it.get(this.name) })
@@ -59,17 +61,16 @@ fun <Z> from() = FromBuilder<Z, Z>({ it })
 
 inline fun <reified Z, reified R> KProperty1<Z, R?>.toJoin(): FromBuilder<Z, R> = from<Z>().join(this)
 inline fun <reified Z, reified R> KProperty1<Z, R?>.toLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoin(this)
-inline fun <reified Z, reified R> KProperty1<Z, R?>.toLeftJoinOrNull(): FromBuilder<Z, R> = from<Z>().leftJoinOrNull(this)
 
 inline fun <reified Z, reified R> KProperty1<Z, Collection<R>>.toCollectionJoin(): FromBuilder<Z, R> = from<Z>().joinCollection(this)
 inline fun <reified Z, reified R> KProperty1<Z, Collection<R>>.toCollectionLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoinCollection(this)
-inline fun <reified Z, reified R> KProperty1<Z, Collection<R>>.toCollectionLeftJoinOrNull(): FromBuilder<Z, R> = from<Z>().leftJoinCollectionOrNull(this)
 
 // Equality
 fun <T, R> KProperty1<T, R?>.equal(x: R): Specifications<T> = toWhere().equal(x)
 fun <T, R> KProperty1<T, R?>.notEqual(x: R): Specifications<T> = toWhere().notEqual(x)
 
 fun <T, R : Any> KProperty1<T, R?>.`in`(values: Collection<R>): Specifications<T> = toWhere().`in`(values)
+fun <T, R : Any> KProperty1<T, R?>.notIn(values: Collection<R>): Specifications<T> = toWhere().notIn(values)
 
 // Comparison
 fun <T> KProperty1<T, Number?>.le(x: Number) = toWhere().le(x)
@@ -174,7 +175,6 @@ inline fun <reified T> or(specs: Iterable<Specifications<in T>?>): Specification
 
 // Not
 operator fun <T> Specifications<T>.not(): Specifications<T> = Specifications.not(this)
-fun <T, R> KProperty1<T, R?>.not(): WhereBuilder<T, R?> = toWhere().not()
 
 // Combines Specifications with an operation
 inline fun <reified T> combineSpecifications(specs: Iterable<Specification<in T>?>, operation: Specifications<T>.(Specification<T>) -> Specifications<T>): Specifications<T> {

@@ -171,8 +171,8 @@ This is a bit dense, but makes sense when it's broken down:
 This is implemented using a private helper function `spec` that captures the common use case of taking an Entity property, and using a `CriteriaBuilder` to create a `Predicate`:
 
 ```kotlin
-fun spec(makePredicate: CriteriaBuilder.(Path<R>) -> Predicate): Specifications<T> =
-        specProcessor(where<T> { root -> makePredicate(path(root)) } as Specifications<Any>) as Specifications<T>
+    fun spec(makePredicate: CriteriaBuilder.(Path<R>) -> Predicate): Specifications<T> =
+            where { root -> makePredicate(path(root)) }
 ```
 
 This uses the `where` factory method, which expects a callback with the signature: `CriteriaBuilder.(Root<T>) -> Predicate`
