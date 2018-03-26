@@ -13,11 +13,11 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>1.5.10.RELEASE</version>
+        <version>2.0.0.RELEASE</version>
     </parent>
 
     <properties>
-        <kotlin.version>1.2.21</kotlin.version>
+        <kotlin.version>1.2.31</kotlin.version>
     </properties>
 
     <dependencies>
@@ -35,7 +35,6 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <version>1.4.191</version>
             <scope>test</scope>
         </dependency>
         <dependency>

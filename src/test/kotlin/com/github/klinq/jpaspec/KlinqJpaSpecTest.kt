@@ -8,7 +8,7 @@ import org.junit.runner.RunWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.data.jpa.domain.Specifications
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit4.SpringRunner
 import org.springframework.transaction.annotation.Transactional
@@ -86,7 +86,7 @@ open class KlinqJpaSpecTest {
      * A single TvShowQuery is equivalent to an AND of all supplied criteria.
      * Note: any criteria that is null will be ignored (not included in the query).
      */
-    fun TvShowQuery.toSpecification(): Specifications<TvShow> = and(
+    fun TvShowQuery.toSpecification(): Specification<TvShow> = and(
             hasName(name),
             availableOnNetflix(availableOnNetflix),
             hasKeywordIn(keywords),
@@ -96,13 +96,13 @@ open class KlinqJpaSpecTest {
     /**
      * A collection of TvShowQueries is equivalent to an OR of all the queries in the collection.
      */
-    fun Iterable<TvShowQuery>.toSpecification(): Specifications<TvShow> = or(
+    fun Iterable<TvShowQuery>.toSpecification(): Specification<TvShow> = or(
             map { query -> query.toSpecification() }
     )
 
     @Test
     fun `Get a tv show by id`() {
-        assertThat(tvShowRepo.findOne(hemlockGrove.id)).isEqualTo(hemlockGrove)
+        assertThat(tvShowRepo.findById(hemlockGrove.id)).isEqualTo(hemlockGrove)
     }
 
     @Test
