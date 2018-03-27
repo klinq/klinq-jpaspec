@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.Specification
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit4.SpringRunner
 import org.springframework.transaction.annotation.Transactional
+import java.util.*
 
 @RunWith(SpringRunner::class)
 @SpringBootTest
@@ -102,12 +103,12 @@ open class KlinqJpaSpecTest {
 
     @Test
     fun `Get a tv show by id`() {
-        assertThat(tvShowRepo.findById(hemlockGrove.id)).isEqualTo(hemlockGrove)
+        assertThat(tvShowRepo.findById(hemlockGrove.id)).isEqualTo(Optional.of(hemlockGrove))
     }
 
     @Test
     fun `Get a tv show by id equality`() {
-        assertThat(tvShowRepo.findOne(TvShow::id.equal(theWalkingDead.id))).isEqualTo(theWalkingDead)
+        assertThat(tvShowRepo.findOne(TvShow::id.equal(theWalkingDead.id))).isEqualTo(Optional.of(theWalkingDead))
     }
 
     @Test
