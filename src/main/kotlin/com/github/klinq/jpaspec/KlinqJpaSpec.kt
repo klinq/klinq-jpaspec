@@ -1,41 +1,40 @@
 package com.github.klinq.jpaspec
 
 import org.springframework.data.jpa.domain.Specification
-import org.springframework.data.jpa.domain.Specifications
 import javax.persistence.criteria.*
 import kotlin.reflect.KProperty1
 
-// Version of Specifications.where that makes the CriteriaBuilder implicit
-private fun <T> where(makePredicate: CriteriaBuilder.(Root<T>) -> Predicate): Specifications<T> =
-        Specifications.where<T> { root, _, criteriaBuilder -> criteriaBuilder.makePredicate(root) }
+// Version of Specification.where that makes the CriteriaBuilder implicit
+private fun <T> where(makePredicate: CriteriaBuilder.(Root<T>) -> Predicate): Specification<T> =
+        Specification.where<T> { root, _, criteriaBuilder -> criteriaBuilder.makePredicate(root) }
 
 class WhereBuilder<T, R>(private val path: (Root<T>) -> Path<R>) {
     @Suppress("UNCHECKED_CAST")
-    fun spec(makePredicate: CriteriaBuilder.(Path<R>) -> Predicate): Specifications<T> =
+    fun spec(makePredicate: CriteriaBuilder.(Path<R>) -> Predicate): Specification<T> =
             where { root -> makePredicate(path(root)) }
 
     // Equality
-    fun equal(x: R): Specifications<T> = spec { equal(it, x) }
+    fun equal(x: R): Specification<T> = spec { equal(it, x) }
 
-    fun notEqual(x: R): Specifications<T> = spec { notEqual(it, x) }
+    fun notEqual(x: R): Specification<T> = spec { notEqual(it, x) }
 
     // Ignores empty collection otherwise an empty 'in' predicate will be generated which will never match any results
-    fun `in`(values: Collection<R>): Specifications<T> =
+    fun `in`(values: Collection<R>): Specification<T> =
             if (values.isNotEmpty()) {
                 spec { path ->
                     `in`(path).also { value -> values.forEach { value.value(it) } }
                 }
             } else {
-                Specifications.where<T>(null)
+                Specification.where<T>(null)
             }
 
-    fun notIn(values: Collection<R>): Specifications<T> =
+    fun notIn(values: Collection<R>): Specification<T> =
             if (values.isNotEmpty()) {
                 spec { path ->
                     `in`(path).also { value -> values.forEach { value.value(it) } }.not()
                 }
             } else {
-                Specifications.where<T>(null)
+                Specification.where<T>(null)
             }
 
     // Null / NotNull
@@ -66,11 +65,12 @@ inline fun <reified Z, reified R> KProperty1<Z, Collection<R>>.toCollectionJoin(
 inline fun <reified Z, reified R> KProperty1<Z, Collection<R>>.toCollectionLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoinCollection(this)
 
 // Equality
-fun <T, R> KProperty1<T, R?>.equal(x: R): Specifications<T> = toWhere().equal(x)
-fun <T, R> KProperty1<T, R?>.notEqual(x: R): Specifications<T> = toWhere().notEqual(x)
+fun <T, R> KProperty1<T, R?>.equal(x: R): Specification<T> = toWhere().equal(x)
 
-fun <T, R : Any> KProperty1<T, R?>.`in`(values: Collection<R>): Specifications<T> = toWhere().`in`(values)
-fun <T, R : Any> KProperty1<T, R?>.notIn(values: Collection<R>): Specifications<T> = toWhere().notIn(values)
+fun <T, R> KProperty1<T, R?>.notEqual(x: R): Specification<T> = toWhere().notEqual(x)
+
+fun <T, R : Any> KProperty1<T, R?>.`in`(values: Collection<R>): Specification<T> = toWhere().`in`(values)
+fun <T, R : Any> KProperty1<T, R?>.notIn(values: Collection<R>): Specification<T> = toWhere().notIn(values)
 
 // Comparison
 fun <T> KProperty1<T, Number?>.le(x: Number) = toWhere().le(x)
@@ -133,51 +133,51 @@ fun <T, E, R : Collection<E>> KProperty1<T, R?>.isNotMember(elem: E) = toWhere()
 fun <T, E, R : Collection<E>> WhereBuilder<T, R?>.isNotMember(elem: E) = spec { isNotMember(elem, it) }
 
 // Strings
-fun <T> KProperty1<T, String?>.like(x: String): Specifications<T> = toWhere().like(x)
+fun <T> KProperty1<T, String?>.like(x: String): Specification<T> = toWhere().like(x)
 
-fun <T> WhereBuilder<T, String?>.like(x: String): Specifications<T> = spec { like(it, x) }
+fun <T> WhereBuilder<T, String?>.like(x: String): Specification<T> = spec { like(it, x) }
 
-fun <T> KProperty1<T, String?>.likeLower(x: String): Specifications<T> = toWhere().likeLower(x)
-fun <T> WhereBuilder<T, String?>.likeLower(x: String): Specifications<T> = spec { like(lower(it), x.toLowerCase()) }
+fun <T> KProperty1<T, String?>.likeLower(x: String): Specification<T> = toWhere().likeLower(x)
+fun <T> WhereBuilder<T, String?>.likeLower(x: String): Specification<T> = spec { like(lower(it), x.toLowerCase()) }
 
-fun <T> KProperty1<T, String?>.like(x: String, escapeChar: Char): Specifications<T> = toWhere().like(x, escapeChar)
-fun <T> WhereBuilder<T, String?>.like(x: String, escapeChar: Char): Specifications<T> = spec { like(it, x, escapeChar) }
+fun <T> KProperty1<T, String?>.like(x: String, escapeChar: Char): Specification<T> = toWhere().like(x, escapeChar)
+fun <T> WhereBuilder<T, String?>.like(x: String, escapeChar: Char): Specification<T> = spec { like(it, x, escapeChar) }
 
-fun <T> KProperty1<T, String?>.notLike(x: String): Specifications<T> = toWhere().notLike(x)
-fun <T> WhereBuilder<T, String?>.notLike(x: String): Specifications<T> = spec { notLike(it, x) }
+fun <T> KProperty1<T, String?>.notLike(x: String): Specification<T> = toWhere().notLike(x)
+fun <T> WhereBuilder<T, String?>.notLike(x: String): Specification<T> = spec { notLike(it, x) }
 
-fun <T> KProperty1<T, String?>.notLike(x: String, escapeChar: Char): Specifications<T> = toWhere().notLike(x, escapeChar)
-fun <T> WhereBuilder<T, String?>.notLike(x: String, escapeChar: Char): Specifications<T> = spec { notLike(it, x, escapeChar) }
+fun <T> KProperty1<T, String?>.notLike(x: String, escapeChar: Char): Specification<T> = toWhere().notLike(x, escapeChar)
+fun <T> WhereBuilder<T, String?>.notLike(x: String, escapeChar: Char): Specification<T> = spec { notLike(it, x, escapeChar) }
 
 // And
 @Suppress("UNCHECKED_CAST")
-infix fun <T> Specifications<T>.and(other: Specification<in T>): Specifications<T> = this.and(other as Specification<T>)
+infix fun <T> Specification<T>.and(other: Specification<in T>): Specification<T> = this.and(other as Specification<T>)
 
-inline fun <reified T> and(vararg specs: Specifications<in T>?): Specifications<T> {
+inline fun <reified T> and(vararg specs: Specification<in T>?): Specification<T> {
     return and(specs.toList())
 }
 
-inline fun <reified T> and(specs: Iterable<Specifications<in T>?>): Specifications<T> {
-    return combineSpecifications(specs, Specifications<T>::and)
+inline fun <reified T> and(specs: Iterable<Specification<in T>?>): Specification<T> {
+    return combineSpecification(specs, Specification<T>::and)
 }
 
 // Or
 @Suppress("UNCHECKED_CAST")
-infix fun <T> Specifications<T>.or(other: Specification<in T>): Specifications<T> = this.or(other as Specification<T>)
+infix fun <T> Specification<T>.or(other: Specification<in T>): Specification<T> = this.or(other as Specification<T>)
 
-inline fun <reified T> or(vararg specs: Specifications<in T>?): Specifications<T> {
+inline fun <reified T> or(vararg specs: Specification<in T>?): Specification<T> {
     return or(specs.toList())
 }
 
-inline fun <reified T> or(specs: Iterable<Specifications<in T>?>): Specifications<T> {
-    return combineSpecifications(specs, Specifications<T>::or)
+inline fun <reified T> or(specs: Iterable<Specification<in T>?>): Specification<T> {
+    return combineSpecification(specs, Specification<T>::or)
 }
 
 // Not
-operator fun <T> Specifications<T>.not(): Specifications<T> = Specifications.not(this)
+operator fun <T> Specification<T>.not(): Specification<T> = Specification.not(this)
 
-// Combines Specifications with an operation
-inline fun <reified T> combineSpecifications(specs: Iterable<Specification<in T>?>, operation: Specifications<T>.(Specification<T>) -> Specifications<T>): Specifications<T> {
+// Combines Specification with an operation
+inline fun <reified T> combineSpecification(specs: Iterable<Specification<in T>?>, operation: Specification<T>.(Specification<T>) -> Specification<T>): Specification<T> {
     return specs.filterNotNull().fold(emptySpecification()) { existing, new ->
         @Suppress("UNCHECKED_CAST")
         existing.operation(new as Specification<T>)
@@ -185,4 +185,4 @@ inline fun <reified T> combineSpecifications(specs: Iterable<Specification<in T>
 }
 
 // Empty Specification
-inline fun <reified T> emptySpecification(): Specifications<T> = Specifications.where<T>(null)
+inline fun <reified T> emptySpecification(): Specification<T> = Specification.where<T>(null)
