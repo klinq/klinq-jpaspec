@@ -9,167 +9,156 @@ private fun <T> where(makePredicate: CriteriaBuilder.(Root<T>) -> Predicate): Sp
         Specification.where<T> { root, _, criteriaBuilder -> criteriaBuilder.makePredicate(root) }
 
 class WhereBuilder<T, R>(private val path: (Root<T>) -> Path<R>) {
-    @Suppress("UNCHECKED_CAST")
     fun spec(makePredicate: CriteriaBuilder.(Path<R>) -> Predicate): Specification<T> =
             where { root -> makePredicate(path(root)) }
 
-    // Equality
-    fun equal(x: R): Specification<T> = spec { equal(it, x) }
-
-    fun notEqual(x: R): Specification<T> = spec { notEqual(it, x) }
-
-    // Ignores empty collection otherwise an empty 'in' predicate will be generated which will never match any results
-    fun `in`(values: Collection<R>): Specification<T> =
-            if (values.isNotEmpty()) {
-                spec { path ->
-                    `in`(path).also { value -> values.forEach { value.value(it) } }
-                }
-            } else {
-                Specification.where<T>(null)
-            }
-
-    fun notIn(values: Collection<R>): Specification<T> =
-            if (values.isNotEmpty()) {
-                spec { path ->
-                    `in`(path).also { value -> values.forEach { value.value(it) } }.not()
-                }
-            } else {
-                Specification.where<T>(null)
-            }
-
-    // Null / NotNull
-    fun isNull() = spec { isNull(it) }
-
-    fun isNotNull() = spec { isNotNull(it) }
 }
 
-class FromBuilder<Z, T>(val from: (Root<Z>) -> From<Z, T>) {
-    inline fun <reified R> where(prop: KProperty1<T, R?>): WhereBuilder<Z, R> = WhereBuilder({ from(it).get<R>(prop.name) })
+class FromBuilder<Z, out T>(private val from: (Root<Z>) -> From<Z, T>) {
+    fun <R> where(prop: KProperty1<in T, R?>): WhereBuilder<Z, R?> = WhereBuilder({ from(it).get<R>(prop.name) })
 
-    inline fun <reified R> join(prop: KProperty1<T, R?>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
+    fun <R> join(prop: KProperty1<in T, R?>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
             FromBuilder({ from(it).join(prop.name, joinType) })
-    inline fun <reified R> leftJoin(prop: KProperty1<T, R?>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) })
+    fun <R> leftJoin(prop: KProperty1<in T, R?>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) })
 
-    inline fun <reified R> joinCollection(prop: KProperty1<T, Collection<R>>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
+    fun <R> joinCollection(prop: KProperty1<in T, Collection<R>>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
             FromBuilder({ from(it).join(prop.name, joinType) })
-    inline fun <reified R> leftJoinCollection(prop: KProperty1<T, Collection<R>>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) })
+    fun <R> leftJoinCollection(prop: KProperty1<in T, Collection<R>>): FromBuilder<Z, R> = FromBuilder({ from(it).join(prop.name, JoinType.LEFT) })
 }
 
-fun <T, R> KProperty1<T, R>.toWhere(): WhereBuilder<T, R> = WhereBuilder({ it.get(this.name) })
+fun <T, R> KProperty1<in T, R>.toWhere(): WhereBuilder<T, R> = WhereBuilder({ it.get(this.name) })
 fun <Z> from() = FromBuilder<Z, Z>({ it })
 
-inline fun <reified Z, reified R> KProperty1<Z, R?>.toJoin(): FromBuilder<Z, R> = from<Z>().join(this)
-inline fun <reified Z, reified R> KProperty1<Z, R?>.toLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoin(this)
+fun <Z, R> KProperty1<in Z, R?>.toJoin(): FromBuilder<Z, R> = from<Z>().join(this)
+fun <Z, R> KProperty1<in Z, R?>.toLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoin(this)
 
-inline fun <reified Z, reified R> KProperty1<Z, Collection<R>>.toCollectionJoin(): FromBuilder<Z, R> = from<Z>().joinCollection(this)
-inline fun <reified Z, reified R> KProperty1<Z, Collection<R>>.toCollectionLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoinCollection(this)
+fun <Z, R> KProperty1<in Z, Collection<R>>.toCollectionJoin(): FromBuilder<Z, R> = from<Z>().joinCollection(this)
+fun <Z, R> KProperty1<in Z, Collection<R>>.toCollectionLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoinCollection(this)
 
 // Equality
-fun <T, R> KProperty1<T, R?>.equal(x: R): Specification<T> = toWhere().equal(x)
+fun <T, R> KProperty1<in T, R?>.equal(x: R): Specification<T> = toWhere().equal(x)
+fun <T, R> WhereBuilder<T, R?>.equal(x: R): Specification<T> = spec { equal(it, x) }
 
-fun <T, R> KProperty1<T, R?>.notEqual(x: R): Specification<T> = toWhere().notEqual(x)
+fun <T, R> KProperty1<in T, R?>.notEqual(x: R): Specification<T> = toWhere().notEqual(x)
+fun <T, R> WhereBuilder<T, R?>.notEqual(x: R): Specification<T> = spec { notEqual(it, x) }
 
-fun <T, R : Any> KProperty1<T, R?>.`in`(values: Collection<R>): Specification<T> = toWhere().`in`(values)
-fun <T, R : Any> KProperty1<T, R?>.notIn(values: Collection<R>): Specification<T> = toWhere().notIn(values)
+//In
+fun <T, R> KProperty1<in T, R?>.`in`(values: Collection<R>): Specification<T> = toWhere().`in`(values)
+// Ignores empty collection otherwise an empty 'in' predicate will be generated which will never match any results
+fun <T, R> WhereBuilder<T, R?>.`in`(values: Collection<R>): Specification<T> =
+        if (values.isNotEmpty()) {
+            spec { path ->
+                `in`(path).also { value -> values.forEach { value.value(it) } }
+            }
+        } else {
+            @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+            Specification.where<T>(null)
+        }
+
+fun <T, R> KProperty1<in T, R?>.notIn(values: Collection<R>): Specification<T> = toWhere().notIn(values)
+fun <T, R> WhereBuilder<T, R?>.notIn(values: Collection<R>): Specification<T> =
+        if (values.isNotEmpty()) {
+            spec { path ->
+                `in`(path).also { value -> values.forEach { value.value(it) } }.not()
+            }
+        } else {
+            @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+            Specification.where<T>(null)
+        }
 
 // Comparison
-fun <T> KProperty1<T, Number?>.le(x: Number) = toWhere().le(x)
+fun <T> KProperty1<in T, Number?>.le(x: Number) = toWhere().le(x)
 fun <T> WhereBuilder<T, Number?>.le(x: Number) = spec { le(it, x) }
 
-fun <T> KProperty1<T, Number?>.lt(x: Number) = toWhere().lt(x)
+fun <T> KProperty1<in T, Number?>.lt(x: Number) = toWhere().lt(x)
 fun <T> WhereBuilder<T, Number?>.lt(x: Number) = spec { lt(it, x) }
 
-fun <T> KProperty1<T, Number?>.ge(x: Number) = toWhere().ge(x)
+fun <T> KProperty1<in T, Number?>.ge(x: Number) = toWhere().ge(x)
 fun <T> WhereBuilder<T, Number?>.ge(x: Number) = spec { ge(it, x) }
 
-fun <T> KProperty1<T, Number?>.gt(x: Number) = toWhere().gt(x)
+fun <T> KProperty1<in T, Number?>.gt(x: Number) = toWhere().gt(x)
 fun <T> WhereBuilder<T, Number?>.gt(x: Number) = spec { gt(it, x) }
 
-fun <T, R : Comparable<R>> KProperty1<T, R?>.lessThan(x: R) = toWhere().lessThan(x)
-@Suppress("UNCHECKED_CAST")
-fun <T, R : Comparable<R>> WhereBuilder<T, R?>.lessThan(x: R) = spec { lessThan(it as Path<R>, x) }
+fun <T, R : Comparable<R>> KProperty1<in T, R?>.lessThan(x: R) = toWhere().lessThan(x)
+fun <T, R : Comparable<R>> WhereBuilder<T, R?>.lessThan(x: R) = spec { lessThan<R>(it, x) }
 
-fun <T, R : Comparable<R>> KProperty1<T, R?>.lessThanOrEqualTo(x: R) = toWhere().lessThanOrEqualTo(x)
-@Suppress("UNCHECKED_CAST")
-fun <T, R : Comparable<R>> WhereBuilder<T, R?>.lessThanOrEqualTo(x: R) = spec { lessThanOrEqualTo(it as Path<R>, x) }
+fun <T, R : Comparable<R>> KProperty1<in T, R?>.lessThanOrEqualTo(x: R) = toWhere().lessThanOrEqualTo(x)
+fun <T, R : Comparable<R>> WhereBuilder<T, R?>.lessThanOrEqualTo(x: R) = spec { lessThanOrEqualTo<R>(it, x) }
 
-fun <T, R : Comparable<R>> KProperty1<T, R?>.greaterThan(x: R) = toWhere().greaterThan(x)
-@Suppress("UNCHECKED_CAST")
-fun <T, R : Comparable<R>> WhereBuilder<T, R?>.greaterThan(x: R) = spec { greaterThan(it as Path<R>, x) }
+fun <T, R : Comparable<R>> KProperty1<in T, R?>.greaterThan(x: R) = toWhere().greaterThan(x)
+fun <T, R : Comparable<R>> WhereBuilder<T, R?>.greaterThan(x: R) = spec { greaterThan<R>(it, x) }
 
-fun <T, R : Comparable<R>> KProperty1<T, R?>.greaterThanOrEqualTo(x: R) = toWhere().greaterThanOrEqualTo(x)
-@Suppress("UNCHECKED_CAST")
-fun <T, R : Comparable<R>> WhereBuilder<T, R?>.greaterThanOrEqualTo(x: R) = spec { greaterThanOrEqualTo(it as Path<R>, x) }
+fun <T, R : Comparable<R>> KProperty1<in T, R?>.greaterThanOrEqualTo(x: R) = toWhere().greaterThanOrEqualTo(x)
+fun <T, R : Comparable<R>> WhereBuilder<T, R?>.greaterThanOrEqualTo(x: R) = spec { greaterThanOrEqualTo<R>(it, x) }
 
-fun <T, R : Comparable<R>> KProperty1<T, R?>.between(x: R, y: R) = toWhere().between(x, y)
-@Suppress("UNCHECKED_CAST")
-fun <T, R : Comparable<R>> WhereBuilder<T, R?>.between(x: R, y: R) = spec { between(it as Path<R>, x, y) }
+fun <T, R : Comparable<R>> KProperty1<in T, R?>.between(x: R, y: R) = toWhere().between(x, y)
+fun <T, R : Comparable<R>> WhereBuilder<T, R?>.between(x: R, y: R) = spec { between<R>(it, x, y) }
 
 // True/False
-fun <T> KProperty1<T, Boolean?>.isTrue() = toWhere().isTrue()
+fun <T> KProperty1<in T, Boolean?>.isTrue() = toWhere().isTrue()
 
 fun <T> WhereBuilder<T, Boolean?>.isTrue() = spec { isTrue(it) }
 
-fun <T> KProperty1<T, Boolean?>.isFalse() = toWhere().isFalse()
+fun <T> KProperty1<in T, Boolean?>.isFalse() = toWhere().isFalse()
 fun <T> WhereBuilder<T, Boolean?>.isFalse() = spec { isFalse(it) }
 
 // Null / NotNull
-fun <T, R> KProperty1<T, R?>.isNull() = toWhere().isNull()
+fun <T, R> KProperty1<in T, R?>.isNull() = toWhere().isNull()
+fun <T, R> WhereBuilder<T, R?>.isNull() = spec { isNull(it) }
 
-fun <T, R> KProperty1<T, R?>.isNotNull() = toWhere().isNotNull()
+fun <T, R> KProperty1<in T, R?>.isNotNull() = toWhere().isNotNull()
+fun <T, R> WhereBuilder<T, R?>.isNotNull() = spec { isNotNull(it) }
 
 // Collections
-fun <T, R : Collection<*>> KProperty1<T, R?>.isEmpty() = toWhere().isEmpty()
+fun <T, R : Collection<*>> KProperty1<in T, R?>.isEmpty() = toWhere().isEmpty()
 
 fun <T, R : Collection<*>> WhereBuilder<T, R?>.isEmpty() = spec { isEmpty(it) }
 
-fun <T, R : Collection<*>> KProperty1<T, R?>.isNotEmpty() = toWhere().isNotEmpty()
+fun <T, R : Collection<*>> KProperty1<in T, R?>.isNotEmpty() = toWhere().isNotEmpty()
 fun <T, R : Collection<*>> WhereBuilder<T, R?>.isNotEmpty() = spec { isNotEmpty(it) }
 
-fun <T, E, R : Collection<E>> KProperty1<T, R?>.isMember(elem: E) = toWhere().isMember(elem)
+fun <T, E, R : Collection<E>> KProperty1<in T, R?>.isMember(elem: E) = toWhere().isMember(elem)
 fun <T, E, R : Collection<E>> WhereBuilder<T, R?>.isMember(elem: E) = spec { isMember(elem, it) }
 
-fun <T, E, R : Collection<E>> KProperty1<T, R?>.isNotMember(elem: E) = toWhere().isNotMember(elem)
+fun <T, E, R : Collection<E>> KProperty1<in T, R?>.isNotMember(elem: E) = toWhere().isNotMember(elem)
 fun <T, E, R : Collection<E>> WhereBuilder<T, R?>.isNotMember(elem: E) = spec { isNotMember(elem, it) }
 
 // Strings
-fun <T> KProperty1<T, String?>.like(x: String): Specification<T> = toWhere().like(x)
+fun <T> KProperty1<in T, String?>.like(x: String): Specification<T> = toWhere().like(x)
 
 fun <T> WhereBuilder<T, String?>.like(x: String): Specification<T> = spec { like(it, x) }
 
-fun <T> KProperty1<T, String?>.likeLower(x: String): Specification<T> = toWhere().likeLower(x)
+fun <T> KProperty1<in T, String?>.likeLower(x: String): Specification<T> = toWhere().likeLower(x)
 fun <T> WhereBuilder<T, String?>.likeLower(x: String): Specification<T> = spec { like(lower(it), x.toLowerCase()) }
 
-fun <T> KProperty1<T, String?>.like(x: String, escapeChar: Char): Specification<T> = toWhere().like(x, escapeChar)
+fun <T> KProperty1<in T, String?>.like(x: String, escapeChar: Char): Specification<T> = toWhere().like(x, escapeChar)
 fun <T> WhereBuilder<T, String?>.like(x: String, escapeChar: Char): Specification<T> = spec { like(it, x, escapeChar) }
 
-fun <T> KProperty1<T, String?>.notLike(x: String): Specification<T> = toWhere().notLike(x)
+fun <T> KProperty1<in T, String?>.notLike(x: String): Specification<T> = toWhere().notLike(x)
 fun <T> WhereBuilder<T, String?>.notLike(x: String): Specification<T> = spec { notLike(it, x) }
 
-fun <T> KProperty1<T, String?>.notLike(x: String, escapeChar: Char): Specification<T> = toWhere().notLike(x, escapeChar)
+fun <T> KProperty1<in T, String?>.notLike(x: String, escapeChar: Char): Specification<T> = toWhere().notLike(x, escapeChar)
 fun <T> WhereBuilder<T, String?>.notLike(x: String, escapeChar: Char): Specification<T> = spec { notLike(it, x, escapeChar) }
 
 // And
-@Suppress("UNCHECKED_CAST")
-infix fun <T> Specification<T>.and(other: Specification<in T>): Specification<T> = this.and(other as Specification<T>)
+infix fun <T> Specification<T>.and(other: Specification<in T>): Specification<T> = and(listOf(this, other))
 
-inline fun <reified T> and(vararg specs: Specification<in T>?): Specification<T> {
+fun <T> and(vararg specs: Specification<in T>?): Specification<T> {
     return and(specs.toList())
 }
 
-inline fun <reified T> and(specs: Iterable<Specification<in T>?>): Specification<T> {
+fun <T> and(specs: Iterable<Specification<in T>?>): Specification<T> {
     return combineSpecification(specs, Specification<T>::and)
 }
 
 // Or
-@Suppress("UNCHECKED_CAST")
-infix fun <T> Specification<T>.or(other: Specification<in T>): Specification<T> = this.or(other as Specification<T>)
+infix fun <T> Specification<T>.or(other: Specification<in T>): Specification<T> = or(listOf(this, other))
 
-inline fun <reified T> or(vararg specs: Specification<in T>?): Specification<T> {
+fun <T> or(vararg specs: Specification<in T>?): Specification<T> {
     return or(specs.toList())
 }
 
-inline fun <reified T> or(specs: Iterable<Specification<in T>?>): Specification<T> {
+fun <T> or(specs: Iterable<Specification<in T>?>): Specification<T> {
     return combineSpecification(specs, Specification<T>::or)
 }
 
@@ -177,7 +166,7 @@ inline fun <reified T> or(specs: Iterable<Specification<in T>?>): Specification<
 operator fun <T> Specification<T>.not(): Specification<T> = Specification.not(this)
 
 // Combines Specification with an operation
-inline fun <reified T> combineSpecification(specs: Iterable<Specification<in T>?>, operation: Specification<T>.(Specification<T>) -> Specification<T>): Specification<T> {
+fun <T> combineSpecification(specs: Iterable<Specification<in T>?>, operation: Specification<T>.(Specification<T>) -> Specification<T>): Specification<T> {
     return specs.filterNotNull().fold(emptySpecification()) { existing, new ->
         @Suppress("UNCHECKED_CAST")
         existing.operation(new as Specification<T>)
@@ -185,4 +174,5 @@ inline fun <reified T> combineSpecification(specs: Iterable<Specification<in T>?
 }
 
 // Empty Specification
-inline fun <reified T> emptySpecification(): Specification<T> = Specification.where<T>(null)
+@Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+fun <T> emptySpecification(): Specification<T> = Specification.where<T>(null)

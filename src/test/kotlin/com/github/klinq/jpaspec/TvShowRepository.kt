@@ -4,6 +4,7 @@ import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
+import java.math.BigDecimal
 import javax.persistence.*
 
 @Repository
@@ -15,6 +16,12 @@ interface GenreRepository : CrudRepository<Genre, Int>, JpaSpecificationExecutor
 interface HasName {
     val name: String
 }
+
+@Embeddable
+data class Price(
+        val amount: BigDecimal? = 0.toBigDecimal(),
+        val currency: String = "EUR"
+)
 
 @Entity
 data class Genre (
@@ -36,7 +43,9 @@ data class TvShow (
         val availableOnNetflix: Boolean = false,
         val releaseDate: String? = null,
         @OneToMany(cascade = [(javax.persistence.CascadeType.ALL)])
-        val starRatings: Set<StarRating> = emptySet()
+        val starRatings: Set<StarRating> = emptySet(),
+        @Embedded
+        val price: Price
 ): HasName
 
 @Entity

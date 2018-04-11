@@ -48,7 +48,8 @@ open class KlinqJpaSpecTest {
                             genre = horrorThriller,
                             availableOnNetflix = true,
                             synopsis = "A teenage girl is brutally murdered, sparking a hunt for her killer. But in a town where everyone hides a secret, will they find the monster among them?",
-                            releaseDate = "2013"))
+                            releaseDate = "2013",
+                            price = Price(10.toBigDecimal())))
 
             theWalkingDead = save(
                     TvShow(
@@ -56,7 +57,8 @@ open class KlinqJpaSpecTest {
                             availableOnNetflix = false,
                             synopsis = "Sheriff Deputy Rick Grimes leads a group of survivors in a world overrun by the walking dead. Fighting the dead, fearing the living.",
                             releaseDate = "2010",
-                            starRatings = setOf(StarRating(stars = 3), StarRating(stars = 4))))
+                            starRatings = setOf(StarRating(stars = 3), StarRating(stars = 4)),
+                            price = Price(5.toBigDecimal())))
 
             betterCallSaul = save(
                     TvShow(
@@ -64,7 +66,8 @@ open class KlinqJpaSpecTest {
                             genre = crimeDrama,
                             availableOnNetflix = false,
                             synopsis = "The trials and tribulations of criminal lawyer, Jimmy McGill, in the time leading up to establishing his strip-mall law office in Albuquerque, New Mexico.",
-                            starRatings = setOf(StarRating(stars = 4), StarRating(stars = 2))))
+                            starRatings = setOf(StarRating(stars = 4), StarRating(stars = 2)),
+                            price = Price(7.toBigDecimal())))
         }
     }
 
@@ -263,6 +266,12 @@ open class KlinqJpaSpecTest {
         val spec = TvShow::starRatings.toCollectionLeftJoin().where(StarRating::stars).notIn(listOf(2, 4)) or
                 TvShow::starRatings.toCollectionLeftJoin().where(StarRating::id).isNull()
         assertThat(tvShowRepo.findAll(spec)).containsOnly(theWalkingDead, hemlockGrove)
+    }
+
+    @Test
+    fun `Get tv show by embedded lessThanOrEqualTo`() {
+        assertThat(tvShowRepo.findAll(TvShow::price.toJoin().where(Price::amount).lessThanOrEqualTo(7.toBigDecimal())))
+                .containsOnly(betterCallSaul, theWalkingDead)
     }
 
     @Test

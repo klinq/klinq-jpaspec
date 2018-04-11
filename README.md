@@ -39,7 +39,16 @@ data class TvShow(
     val availableOnNetflix: Boolean = false,
     val releaseDate: String? = null,
     @OneToMany(cascade = [javax.persistence.CascadeType.ALL])
-    val starRatings: Set<StarRating> = emptySet())
+    val starRatings: Set<StarRating> = emptySet(),
+    @Embedded
+    val price: Price
+)
+
+@Embeddable
+data class Price(
+        val amount: BigDecimal = 0.toBigDecimal(),
+        val currency: String = "EUR"
+)
 
 @Entity
 data class StarRating(
@@ -65,6 +74,10 @@ class MyService @Inject constructor(val tvShowRepo: TvShowRepository) {
 
    fun findShowsWithComplexQuery(): List<TvShow> {
        return tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars).equal(2))
+   }
+   
+   fun findShowByEmbeddedId(): List<TvShow> {
+       return tvShowRepo.findAll(TvShow::price.toJoin().where(Price::amount).lessThanOrEqualTo(7.toBigDecimal()))
    }
 }
 ```
@@ -157,14 +170,14 @@ This DSL builds on [Spring Data's Specifications abstraction](http://docs.spring
 The code `TvShow::releaseDate.equal("2010")` is a call to the Kotlin extension function:
 
 ```kotlin
-fun <T, R> KProperty1<T, R?>.equal(x: R): Specifications<T> = spec { equal(it, x) }
+fun <T, R> KProperty1<T, R>.equal(x: R): Specifications<T> = spec { equal(it, x) }
 ```
 
 This is a bit dense, but makes sense when it's broken down:
 
 - `T`: The type of the object that the property is declared on, in this case TvShow
 - `R`: The property type, for TvShow::releaseDate it is String
-- `KProperty1<T,R?>`: Kotlin reflection API representation of the property `TvShow::releaseDate`. The 1 refers to a property with 1 receiver, and `R?` is declared as nullable for the method to work on nullable properties as well as non-null properties.
+- `KProperty1<T,R>`: Kotlin reflection API representation of the property `TvShow::releaseDate`. The 1 refers to a property with 1 receiver, and `R?` is declared as nullable for the method to work on nullable properties as well as non-null properties.
 - `x`: The value to test against
 - `Specifications<T>`: The Spring data specifications result
 
