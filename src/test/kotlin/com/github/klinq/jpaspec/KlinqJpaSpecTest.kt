@@ -37,8 +37,8 @@ open class KlinqJpaSpecTest {
     @Before
     fun setup() {
         genreRepo.apply {
-            crimeDrama = save(Genre(name = "Crime drama"))
-            horrorThriller = save(Genre(name = "Horror Thriller"))
+            crimeDrama = save(Genre(name = "Crime drama", starRatings = setOf(StarRating(stars = 1), StarRating(stars = 2))))
+            horrorThriller = save(Genre(name = "Horror Thriller", starRatings = setOf(StarRating(stars = 3), StarRating(stars = 5))))
         }
 
         tvShowRepo.apply {
@@ -93,8 +93,8 @@ open class KlinqJpaSpecTest {
     fun TvShowQuery.toSpecification(): Specification<TvShow> = and(
             hasName(name),
             availableOnNetflix(availableOnNetflix),
-            hasKeywordIn(keywords),
-            hasReleaseDateIn(releaseDates)
+            hasKeywordIn(keywords).takeUnless { keywords.isEmpty() },
+            hasReleaseDateIn(releaseDates).takeUnless { releaseDates.isEmpty() }
     )
 
     /**
@@ -116,7 +116,7 @@ open class KlinqJpaSpecTest {
 
     @Test
     fun `Get tv shows by id notEqual`() {
-        assertThat(tvShowRepo.findAll(TvShow::name.notEqual(theWalkingDead.name))).containsOnly(betterCallSaul, hemlockGrove)
+        assertThat(tvShowRepo.findAll(HasName::name.notEqual(theWalkingDead.name))).containsOnly(betterCallSaul, hemlockGrove)
     }
 
     @Test
@@ -146,27 +146,27 @@ open class KlinqJpaSpecTest {
 
     @Test
     fun `Get tv show by name lessThan`() {
-        assertThat(tvShowRepo.findAll(TvShow::name.lessThan("C"))).containsOnly(betterCallSaul)
+        assertThat(tvShowRepo.findAll(HasName::name.lessThan("C"))).containsOnly(betterCallSaul)
     }
 
     @Test
     fun `Get tv show by name lessThanOrEqualTo`() {
-        assertThat(tvShowRepo.findAll(TvShow::name.lessThanOrEqualTo("Hemlock Grove"))).containsOnly(betterCallSaul, hemlockGrove)
+        assertThat(tvShowRepo.findAll(HasName::name.lessThanOrEqualTo("Hemlock Grove"))).containsOnly(betterCallSaul, hemlockGrove)
     }
 
     @Test
     fun `Get tv show by name greaterThan`() {
-        assertThat(tvShowRepo.findAll(TvShow::name.greaterThan("Hemlock Grove"))).containsOnly(theWalkingDead)
+        assertThat(tvShowRepo.findAll(HasName::name.greaterThan("Hemlock Grove"))).containsOnly(theWalkingDead)
     }
 
     @Test
     fun `Get tv show by name greaterThanOrEqualTo`() {
-        assertThat(tvShowRepo.findAll(TvShow::name.greaterThanOrEqualTo("Hemlock Grove"))).containsOnly(hemlockGrove, theWalkingDead)
+        assertThat(tvShowRepo.findAll(HasName::name.greaterThanOrEqualTo("Hemlock Grove"))).containsOnly(hemlockGrove, theWalkingDead)
     }
 
     @Test
     fun `Get tv show by name between`() {
-        assertThat(tvShowRepo.findAll(TvShow::name.between("A", "H"))).containsOnly(betterCallSaul)
+        assertThat(tvShowRepo.findAll(HasName::name.between("A", "H"))).containsOnly(betterCallSaul)
     }
 
     @Test
@@ -211,7 +211,7 @@ open class KlinqJpaSpecTest {
 
     @Test
     fun `Get a tv show by name like`() {
-        assertThat(tvShowRepo.findAll(TvShow::name.like("The%"))).containsOnly(theWalkingDead)
+        assertThat(tvShowRepo.findAll(HasName::name.like("The%"))).containsOnly(theWalkingDead)
     }
 
     @Test
@@ -221,7 +221,7 @@ open class KlinqJpaSpecTest {
 
     @Test
     fun `Get a tv show by name notLike`() {
-        assertThat(tvShowRepo.findAll(TvShow::name.notLike("The %"))).containsOnly(betterCallSaul, hemlockGrove)
+        assertThat(tvShowRepo.findAll(HasName::name.notLike("The %"))).containsOnly(betterCallSaul, hemlockGrove)
     }
 
     @Test
@@ -246,26 +246,31 @@ open class KlinqJpaSpecTest {
 
     @Test
     fun `Test Join`() {
-        assertThat(tvShowRepo.findAll(TvShow::genre.toJoin().where(Genre::name).equal("Crime drama"))).containsOnly(betterCallSaul)
+        assertThat(tvShowRepo.findAll(TvShow::genre.toJoin().where(HasName::name).equal("Crime drama"))).containsOnly(betterCallSaul)
     }
 
     @Test
     fun `Test Left Join`() {
-        val spec = TvShow::genre.toLeftJoin().where(Genre::name).equal("Crime drama") or
+        val spec = TvShow::genre.toLeftJoin().where(HasName::name).equal("Crime drama") or
                 TvShow::genre.toLeftJoin().where(Genre::id).isNull()
         assertThat(tvShowRepo.findAll(spec)).containsOnly(betterCallSaul, theWalkingDead)
     }
 
     @Test
     fun `Test Collection Join`() {
-        assertThat(tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars).equal(2))).containsOnly(betterCallSaul)
+        assertThat(tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(HasStars::stars).equal(2))).containsOnly(betterCallSaul)
     }
 
     @Test
     fun `Test Collection Left Join`() {
-        val spec = TvShow::starRatings.toCollectionLeftJoin().where(StarRating::stars).notIn(listOf(2, 4)) or
+        val spec = TvShow::starRatings.toCollectionLeftJoin().where(HasStars::stars).notIn(listOf(2, 4)) or
                 TvShow::starRatings.toCollectionLeftJoin().where(StarRating::id).isNull()
         assertThat(tvShowRepo.findAll(spec)).containsOnly(theWalkingDead, hemlockGrove)
+    }
+
+    @Test
+    fun `Test Double Join with contra variance`() {
+        assertThat(tvShowRepo.findAll(TvShow::genre.toJoin().joinCollection(Genre::starRatings).where(HasStars::stars).equal(1))).containsOnly(betterCallSaul)
     }
 
     @Test

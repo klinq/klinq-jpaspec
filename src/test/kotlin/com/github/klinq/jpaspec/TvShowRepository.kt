@@ -17,6 +17,10 @@ interface HasName {
     val name: String
 }
 
+interface HasStars {
+    val stars: Int
+}
+
 @Embeddable
 data class Price(
         val amount: BigDecimal? = 0.toBigDecimal(),
@@ -24,15 +28,17 @@ data class Price(
 )
 
 @Entity
-data class Genre (
+data class Genre(
         @Id
         @GeneratedValue
         val id: Int = 0,
-        override val name: String = ""
-): HasName
+        override val name: String = "",
+        @OneToMany(cascade = [(javax.persistence.CascadeType.ALL)])
+        val starRatings: Set<StarRating> = emptySet()
+) : HasName
 
 @Entity
-data class TvShow (
+data class TvShow(
         @Id
         @GeneratedValue
         val id: Int = 0,
@@ -46,14 +52,14 @@ data class TvShow (
         val starRatings: Set<StarRating> = emptySet(),
         @Embedded
         val price: Price
-): HasName
+) : HasName
 
 @Entity
 data class StarRating(
         @Id
         @GeneratedValue
         val id: Int = 0,
-        val stars: Int = 0)
+        override val stars: Int = 0) : HasStars
 
 
 // Convenience functions (using the DSL) that make assembling queries more readable and allows for dynamic queries.
