@@ -125,6 +125,12 @@ open class KlinqJpaSpecTest {
     }
 
     @Test
+    fun `Get tv show by empty id in`() {
+        //default is false
+        assertThat(tvShowRepo.findAll(TvShow::id.`in`(listOf()))).isEmpty()
+    }
+
+    @Test
     fun `Get tv show by id lt`() {
         assertThat(tvShowRepo.findAll(TvShow::id.lt(betterCallSaul.id))).containsOnly(hemlockGrove, theWalkingDead)
     }
