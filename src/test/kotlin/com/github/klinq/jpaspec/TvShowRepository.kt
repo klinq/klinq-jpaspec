@@ -33,7 +33,7 @@ data class Genre(
         @GeneratedValue
         val id: Int = 0,
         override val name: String = "",
-        @OneToMany(cascade = [(javax.persistence.CascadeType.ALL)])
+        @OneToMany(cascade = [CascadeType.ALL])
         val starRatings: Set<StarRating> = emptySet()
 ) : HasName
 
@@ -48,7 +48,7 @@ data class TvShow(
         val synopsis: String = "",
         val availableOnNetflix: Boolean = false,
         val releaseDate: String? = null,
-        @OneToMany(cascade = [(javax.persistence.CascadeType.ALL)])
+        @OneToMany(cascade = [CascadeType.ALL])
         val starRatings: Set<StarRating> = emptySet(),
         @Embedded
         val price: Price

@@ -8,6 +8,7 @@ import org.junit.runner.RunWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit4.SpringRunner
@@ -341,4 +342,9 @@ open class KlinqJpaSpecTest {
         assertThat(shows).containsOnly(betterCallSaul, hemlockGrove)
     }
 
+    @Test
+    fun distinct() {
+        val page = tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars, true).greaterThanOrEqualTo(1), PageRequest.of(0, 50))
+        assertThat(page.content).containsExactlyInAnyOrder(betterCallSaul, theWalkingDead)
+    }
 }
