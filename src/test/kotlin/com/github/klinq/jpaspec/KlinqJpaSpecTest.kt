@@ -344,7 +344,10 @@ open class KlinqJpaSpecTest {
 
     @Test
     fun distinct() {
-        val page = tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars, true).greaterThanOrEqualTo(1), PageRequest.of(0, 50))
+        val page = tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars).greaterThanOrEqualTo(1).distinct(), PageRequest.of(0, 50))
         assertThat(page.content).containsExactlyInAnyOrder(betterCallSaul, theWalkingDead)
+
+        val nonDistinctPage = tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars).greaterThanOrEqualTo(1), PageRequest.of(0, 50))
+        assertThat(nonDistinctPage.content).containsExactlyInAnyOrder(betterCallSaul, betterCallSaul, theWalkingDead, theWalkingDead)
     }
 }

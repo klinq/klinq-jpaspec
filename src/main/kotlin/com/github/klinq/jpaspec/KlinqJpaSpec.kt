@@ -5,19 +5,16 @@ import javax.persistence.criteria.*
 import kotlin.reflect.KProperty1
 
 // Version of Specification.where that makes the CriteriaBuilder implicit
-private fun <T> where(distinct: Boolean, makePredicate: CriteriaBuilder.(Root<T>) -> Predicate): Specification<T> =
-        Specification.where<T> { root, criteriaQuery, criteriaBuilder ->
-            criteriaQuery.distinct(distinct)
-            criteriaBuilder.makePredicate(root)
-        }
+private fun <T> where(makePredicate: CriteriaBuilder.(Root<T>) -> Predicate): Specification<T> =
+        Specification.where<T> { root, _, criteriaBuilder -> criteriaBuilder.makePredicate(root) }
 
-class WhereBuilder<T, R>(private val distinct: Boolean, private val path: (Root<T>) -> Path<R>) {
+class WhereBuilder<T, R>(private val path: (Root<T>) -> Path<R>) {
     fun spec(makePredicate: CriteriaBuilder.(Path<R>) -> Predicate): Specification<T> =
-            where(distinct) { root -> makePredicate(path(root)) }
+            where { root -> makePredicate(path(root)) }
 }
 
 class FromBuilder<Z, out T>(private val from: (Root<Z>) -> From<Z, T>) {
-    fun <R> where(prop: KProperty1<in T, R?>, distinct: Boolean = false): WhereBuilder<Z, R?> = WhereBuilder(distinct) { from(it).get<R>(prop.name) }
+    fun <R> where(prop: KProperty1<in T, R?>): WhereBuilder<Z, R?> = WhereBuilder { from(it).get<R>(prop.name) }
 
     fun <R> join(prop: KProperty1<in T, R?>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
             FromBuilder { from(it).join(prop.name, joinType) }
@@ -32,7 +29,7 @@ class FromBuilder<Z, out T>(private val from: (Root<Z>) -> From<Z, T>) {
             FromBuilder { from(it).join(prop.name, JoinType.LEFT) }
 }
 
-fun <T, R> KProperty1<in T, R>.toWhere(distinct: Boolean = false): WhereBuilder<T, R> = WhereBuilder(distinct) { it.get(this.name) }
+fun <T, R> KProperty1<in T, R>.toWhere(): WhereBuilder<T, R> = WhereBuilder { it.get(this.name) }
 fun <Z> from() = FromBuilder<Z, Z> { it }
 
 fun <Z, R> KProperty1<in Z, R?>.toJoin(): FromBuilder<Z, R> = from<Z>().join(this)
@@ -185,3 +182,8 @@ private fun <T> combineSpecification(specs: Iterable<Specification<in T>?>, oper
 // Empty Specification
 @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
 private fun <T> emptySpecification(): Specification<T> = Specification.where<T>(null)
+
+fun <T> Specification<T>.distinct(): Specification<T> = Specification { root, qb, cb ->
+    qb.distinct(true)
+    this.toPredicate(root, qb, cb)
+}
