@@ -2,6 +2,7 @@ package com.github.klinq.jpaspec
 
 import org.springframework.data.jpa.domain.Specification
 import javax.persistence.criteria.*
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 
 // Version of Specification.where that makes the CriteriaBuilder implicit
@@ -15,6 +16,8 @@ class WhereBuilder<T, R>(private val path: (Root<T>) -> Path<R>) {
 
 class FromBuilder<Z, out T>(private val from: (Root<Z>) -> From<Z, T>) {
     fun <R> where(prop: KProperty1<in T, R?>): WhereBuilder<Z, R?> = WhereBuilder { from(it).get<R>(prop.name) }
+
+    fun <Z> where(): WhereBuilder<Z, Z> = WhereBuilder { it }
 
     fun <R> join(prop: KProperty1<in T, R?>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
             FromBuilder { from(it).join(prop.name, joinType) }
@@ -187,3 +190,6 @@ fun <T> Specification<T>.distinct(): Specification<T> = Specification { root, qb
     qb.distinct(true)
     this.toPredicate(root, qb, cb)
 }
+
+// type
+fun <T> WhereBuilder<T, T>.typeEqual(c: KClass<*>) = spec { equal(it.type(), c.java) }

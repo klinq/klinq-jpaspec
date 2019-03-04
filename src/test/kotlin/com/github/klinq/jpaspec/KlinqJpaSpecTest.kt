@@ -35,6 +35,9 @@ open class KlinqJpaSpecTest {
     lateinit var crimeDrama: Genre
     lateinit var horrorThriller: Genre
 
+    @Autowired
+    lateinit var shapeRepository: ShapeRepository
+
     @Before
     fun setup() {
         genreRepo.apply {
@@ -349,5 +352,14 @@ open class KlinqJpaSpecTest {
 
         val nonDistinctPage = tvShowRepo.findAll(TvShow::starRatings.toCollectionJoin().where(StarRating::stars).greaterThanOrEqualTo(1), PageRequest.of(0, 50))
         assertThat(nonDistinctPage.content).containsExactlyInAnyOrder(betterCallSaul, betterCallSaul, theWalkingDead, theWalkingDead)
+    }
+
+    @Test
+    fun `find shape by type`() {
+        val circle = shapeRepository.save(Circle(5.0f))
+        val square = shapeRepository.save(Square(3.0f))
+
+        assertThat(shapeRepository.findAll(from<Shape>().where<Shape>().typeEqual(Circle::class))).containsExactly(circle)
+        assertThat(shapeRepository.findAll(from<Shape>().where<Shape>().typeEqual(Square::class))).containsExactly(square)
     }
 }
