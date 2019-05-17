@@ -38,6 +38,12 @@ open class KlinqJpaSpecTest {
     @Autowired
     lateinit var shapeRepository: ShapeRepository
 
+    @Autowired
+    lateinit var propertyRepository: PropertyRepository
+
+    @Autowired
+    lateinit var withPropertyRepository: WithPropertyRepository
+
     @Before
     fun setup() {
         genreRepo.apply {
@@ -361,5 +367,25 @@ open class KlinqJpaSpecTest {
 
         assertThat(shapeRepository.findAll(from<Shape>().where<Shape>().typeEqual(Circle::class))).containsExactly(circle)
         assertThat(shapeRepository.findAll(from<Shape>().where<Shape>().typeEqual(Square::class))).containsExactly(square)
+    }
+
+    @Test
+    fun `map value join`() {
+        withPropertyRepository.saveAndFlush(WithProperty())
+        val withProperty = withPropertyRepository.saveAndFlush(WithProperty())
+        propertyRepository.saveAndFlush(Property(withProperty, "foo", "bar").apply { withProperty.properties["foo"] = this })
+
+        assertThat(withPropertyRepository.findAll(WithProperty::properties.toMapValueJoin().where(Property::value).equal("bar"))).containsExactly(withProperty)
+        assertThat(withPropertyRepository.findAll(WithProperty::properties.toMapValueJoin().where(Property::value).equal("baz"))).isEmpty()
+    }
+
+    @Test
+    fun `map value left join`() {
+        val withProperty = withPropertyRepository.saveAndFlush(WithProperty())
+        val withProperty2 = withPropertyRepository.saveAndFlush(WithProperty())
+        propertyRepository.saveAndFlush(Property(withProperty2, "foo", "bar").apply { withProperty2.properties["foo"] = this })
+
+        assertThat(withPropertyRepository.findAll(WithProperty::properties.toMapValueLeftJoin().where(Property::value).equal("bar"))).containsExactly(withProperty2)
+        assertThat(withPropertyRepository.findAll(WithProperty::properties.toMapValueLeftJoin().where(Property::value).isNull())).containsExactly(withProperty)
     }
 }

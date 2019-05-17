@@ -30,6 +30,12 @@ class FromBuilder<Z, out T>(private val from: (Root<Z>) -> From<Z, T>) {
 
     fun <R> leftJoinCollection(prop: KProperty1<in T, Collection<R>>): FromBuilder<Z, R> =
             FromBuilder { from(it).join(prop.name, JoinType.LEFT) }
+
+    fun <K, R> joinMapValue(prop: KProperty1<in T, Map<K, R>>, joinType: JoinType = JoinType.INNER): FromBuilder<Z, R> =
+            FromBuilder { from(it).join(prop.name, joinType) }
+
+    fun <K, R> leftJoinMapValue(prop: KProperty1<in T, Map<K, R>>): FromBuilder<Z, R> =
+            FromBuilder { from(it).join(prop.name, JoinType.LEFT) }
 }
 
 fun <T, R> KProperty1<in T, R>.toWhere(): WhereBuilder<T, R> = WhereBuilder { it.get(this.name) }
@@ -40,6 +46,9 @@ fun <Z, R> KProperty1<in Z, R?>.toLeftJoin(): FromBuilder<Z, R> = from<Z>().left
 
 fun <Z, R> KProperty1<in Z, Collection<R>>.toCollectionJoin(): FromBuilder<Z, R> = from<Z>().joinCollection(this)
 fun <Z, R> KProperty1<in Z, Collection<R>>.toCollectionLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoinCollection(this)
+
+fun <Z, K, R> KProperty1<in Z, Map<K, R>>.toMapValueJoin(): FromBuilder<Z, R> = from<Z>().joinMapValue(this)
+fun <Z, K, R> KProperty1<in Z, Map<K, R>>.toMapValueLeftJoin(): FromBuilder<Z, R> = from<Z>().leftJoinMapValue(this)
 
 // Equality
 fun <T, R> KProperty1<in T, R?>.equal(x: R): Specification<T> = toWhere().equal(x)
