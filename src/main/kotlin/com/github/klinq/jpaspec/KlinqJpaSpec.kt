@@ -7,7 +7,7 @@ import kotlin.reflect.KProperty1
 
 // Version of Specification.where that makes the CriteriaBuilder implicit
 private fun <T> where(makePredicate: CriteriaBuilder.(Root<T>) -> Predicate): Specification<T> =
-        Specification.where<T> { root, _, criteriaBuilder -> criteriaBuilder.makePredicate(root) }
+        Specification.where<T> { root, _, criteriaBuilder -> criteriaBuilder.makePredicate(root) }!!
 
 class WhereBuilder<T, R>(private val path: (Root<T>) -> Path<R>) {
     fun spec(makePredicate: CriteriaBuilder.(Path<R>) -> Predicate): Specification<T> =
