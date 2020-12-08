@@ -1,3 +1,6 @@
+### WARNING: discontinued project! 
+Kotlin 1.4 new type inference is super slow for the level of generics used in this project. Suggest to use plain criteria with some simple kotlin extensions instead.
+
 # LINQ Style Kotlin Queries for Spring Data JPA Specification
 [![Build Status](https://travis-ci.org/klinq/klinq-jpaspec.svg?branch=master)](https://travis-ci.org/klinq/klinq-jpaspec)
 [![License](http://img.shields.io/:license-apache-blue.svg?style=flat-square)](http://www.apache.org/licenses/LICENSE-2.0.html)
